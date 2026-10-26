@@ -3,8 +3,8 @@ services:
     build: .
     ports: ["80:3000"]
     environment:
-      ADMIN_USER: IdealHG
-      ADMIN_PASSWORD: Ideal@100
+      ADMIN_USER: "IdealHG"
+      ADMIN_PASSWORD: "Ideal@100"
     volumes: ["ideal-hg-data:/data"]
     restart: always
 volumes:
