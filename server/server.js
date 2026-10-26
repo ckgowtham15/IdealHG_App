@@ -16,14 +16,28 @@ let users = readJson(USERS, []);
 const SECRET = process.env.SESSION_SECRET || (fs.existsSync(KEY) ? fs.readFileSync(KEY, 'utf8') : (() => { const k = crypto.randomBytes(32).toString('hex'); fs.writeFileSync(KEY, k); return k; })());
 const hash = (p, salt = crypto.randomBytes(16).toString('hex')) => salt + ':' + crypto.scryptSync(p, salt, 32).toString('hex');
 const check = (p, h) => { const [sa, x] = h.split(':'), y = crypto.scryptSync(p, sa, 32).toString('hex'); return x.length === y.length && crypto.timingSafeEqual(Buffer.from(x), Buffer.from(y)); };
-// admin account comes from ADMIN_USER / ADMIN_PASSWORD (re-applied on every start)
-const AU = (process.env.ADMIN_USER || 'admin').toLowerCase();
-const AP = process.env.ADMIN_PASSWORD || (users.some(u => u.role === 'admin') ? '' : 'admin123');
-if (AP) {
-  const a = users.find(u => u.username === AU);
-  if (a) a.pass = hash(AP); else users.push({ username: AU, pass: hash(AP), role: 'admin', customer: '' });
+// Admin account comes from environment variables.
+const AU = (process.env.ADMIN_USER || 'admin').trim().toLowerCase();
+const AP = process.env.ADMIN_PASSWORD;
+
+if (!AP) {
+  console.warn('ADMIN_PASSWORD is not configured.');
+} else {
+  const existingAdmin = users.find(u => u.role === 'admin');
+
+  if (existingAdmin) {
+    existingAdmin.username = AU;
+    existingAdmin.pass = hash(AP);
+  } else {
+    users.push({
+      username: AU,
+      pass: hash(AP),
+      role: 'admin',
+      customer: ''
+    });
+  }
+
   writeJson(USERS, users);
-  if (AP === 'admin123') console.warn('WARNING: default admin password in use – set ADMIN_PASSWORD');
 }
 const pub = u => ({ username: u.username, role: u.role, customer: u.customer });
 const sign = u => { const p = Buffer.from(JSON.stringify({ u: u.username, e: Date.now() + 7 * 864e5 })).toString('base64url'); return p + '.' + crypto.createHmac('sha256', SECRET).update(p).digest('base64url'); };
